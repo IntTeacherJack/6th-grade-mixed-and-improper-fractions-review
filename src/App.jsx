@@ -43,7 +43,7 @@ function generateQuestion(topic) {
       const wrong = formatFraction(number.whole + number.top, number.bottom)
       return makeQuestion(topic, `Write ${mixed} as an improper fraction.`, [improper, wrong], improper, mixed)
     }
-    const wrong = formatMixedNumber(number.whole, Math.max(1, number.top - 1), number.bottom)
+    const wrong = formatMixedNumber(number.whole + 1, number.top, number.bottom)
     return makeQuestion(topic, `Write ${improper} as a mixed number.`, [mixed, wrong], mixed, improper)
   }
 
@@ -97,13 +97,18 @@ function App() {
   const [pullsToWin, setPullsToWin] = useState(5)
   const [showSettings, setShowSettings] = useState(false)
   const [winner, setWinner] = useState(null)
+  const answerLock = useRef(false)
+  const roundTimer = useRef(null)
+
+  useEffect(() => () => window.clearTimeout(roundTimer.current), [])
 
   useEffect(() => {
     usedQuestions.current.add(question.signature)
   }, [question.signature])
 
   function chooseAnswer(team, answer) {
-    if (locked || winner) return
+    if (answerLock.current || winner) return
+    answerLock.current = true
     const correct = answer === question.correct
     const pull = team === 'left' ? (correct ? -1 : 1) : correct ? 1 : -1
     const newPosition = ropePosition + pull
@@ -115,7 +120,7 @@ function App() {
     } else {
       setMessage(`Wrong answer — ${team === 'left' ? 'Orange' : 'Blue'} pulls the rope!`)
     }
-    window.setTimeout(() => {
+    roundTimer.current = window.setTimeout(() => {
       if (Math.abs(newPosition) >= pullsToWin) {
         const winningTeam = newPosition < 0 ? 'left' : 'right'
         setWinner(winningTeam)
@@ -125,11 +130,14 @@ function App() {
         setRound((current) => current + 1)
         setMessage('First correct tap wins the pull!')
       }
+      answerLock.current = false
       setLocked(false)
     }, 800)
   }
 
   function restart() {
+    window.clearTimeout(roundTimer.current)
+    answerLock.current = false
     usedQuestions.current.clear()
     topicQueue.current = freshTopicCycle('')
     lastTopic.current = topicQueue.current.shift()
@@ -176,7 +184,7 @@ function App() {
 }
 
 function AnswerSide({ team, side, question, onChoose, disabled }) {
-  return <div className={`answer-side ${side}-side`}><p>{team} — TOUCH AN ANSWER</p><div className="answers">{question.answers.map((answer) => <button className="answer" key={answer} onClick={() => onChoose(answer)} disabled={disabled}><span><MathText text={answer} /></span></button>)}</div></div>
+  return <div className={`answer-side ${side}-side`}><p>{team} — TOUCH AN ANSWER</p><div className="answers">{question.answers.map((answer) => <button className="answer" key={answer} onPointerDown={(event) => { event.preventDefault(); onChoose(answer) }} onClick={(event) => { if (event.detail === 0) onChoose(answer) }} disabled={disabled}><span><MathText text={answer} /></span></button>)}</div></div>
 }
 
 function QuestionPrompt({ question }) {
