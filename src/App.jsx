@@ -2,94 +2,57 @@ import { useEffect, useRef, useState } from 'react'
 import './App.css'
 
 const TOPICS = [
-  'Terminating or recurring',
-  'Simplifying fractions',
-  'Decimals into fractions',
-  'Fraction & decimal conversions',
-  'HCF in a fraction',
-  'Simple algebra',
+  'Mixed numbers or improper fractions',
+  'Converting between forms',
+  'Equivalent fraction forms',
 ]
 
-const gcd = (a, b) => (b ? gcd(b, a % b) : a)
 const pick = (items) => items[Math.floor(Math.random() * items.length)]
 const shuffle = (items) => [...items].sort(() => Math.random() - 0.5)
-const coprimePairs = [[1, 2], [1, 3], [2, 3], [2, 5], [3, 4], [3, 5], [4, 5]]
-const factorsOf = (number) => Array.from({ length: number }, (_, index) => index + 1).filter((factor) => number % factor === 0)
 
 function formatFraction(top, bottom) {
   return `${top}/${bottom}`
 }
 
+function formatMixedNumber(whole, top, bottom) {
+  return `${whole} ${top}/${bottom}`
+}
+
+function createMixedNumber() {
+  const bottom = pick([2, 3, 4, 5, 6, 7, 8, 9, 10, 12])
+  const top = pick(Array.from({ length: bottom - 1 }, (_, index) => index + 1))
+  const whole = pick([1, 2, 3, 4, 5, 6, 7, 8])
+  return { whole, top, bottom, improperTop: whole * bottom + top }
+}
+
 function generateQuestion(topic) {
-  if (topic === 'Terminating or recurring') {
-    const terminating = Math.random() < 0.5
-    const denominators = terminating ? [2, 4, 5, 8, 10, 16, 20, 25, 32, 40, 50, 64, 80, 100] : [3, 6, 7, 9, 11, 12, 13, 14, 15, 18, 21, 22, 24, 27, 28, 33, 35, 36, 39, 45]
-    const bottom = pick(denominators)
-    const top = pick(Array.from({ length: bottom - 1 }, (_, index) => index + 1).filter((number) => gcd(number, bottom) === 1))
-    return makeQuestion(topic, `Is ${formatFraction(top, bottom)} a terminating or recurring decimal?`, ['Terminating', 'Recurring'], terminating ? 'Terminating' : 'Recurring', `${top}/${bottom}`)
+  const number = createMixedNumber()
+  const mixed = formatMixedNumber(number.whole, number.top, number.bottom)
+  const improper = formatFraction(number.improperTop, number.bottom)
+
+  if (topic === 'Mixed numbers or improper fractions') {
+    const showMixed = Math.random() < 0.5
+    const shown = showMixed ? mixed : improper
+    const correct = showMixed ? 'Mixed number' : 'Improper fraction'
+    const wrong = showMixed ? 'Improper fraction' : 'Mixed number'
+    return makeQuestion(topic, `Is ${shown} a mixed number or an improper fraction?`, [correct, wrong], correct, shown)
   }
 
-  if (topic === 'Simplifying fractions') {
-    const divisor = pick([3, 4, 5, 6, 8, 9, 10, 12])
-    const bottom = pick([3, 4, 5, 6, 7, 8, 9, 10, 11, 12])
-    const top = pick(Array.from({ length: bottom - 1 }, (_, index) => index + 1).filter((number) => gcd(number, bottom) === 1))
-    const original = formatFraction(top * divisor, bottom * divisor)
-    const correct = formatFraction(top, bottom)
-    const wrong = formatFraction(top * divisor, bottom)
-    return makeQuestion(topic, `Simplify ${original}`, [correct, wrong], correct, original)
+  if (topic === 'Converting between forms') {
+    if (Math.random() < 0.5) {
+      const wrong = formatFraction(number.whole + number.top, number.bottom)
+      return makeQuestion(topic, `Write ${mixed} as an improper fraction.`, [improper, wrong], improper, mixed)
+    }
+    const wrong = formatMixedNumber(number.whole, Math.max(1, number.top - 1), number.bottom)
+    return makeQuestion(topic, `Write ${improper} as a mixed number.`, [mixed, wrong], mixed, improper)
   }
 
-  if (topic === 'Decimals into fractions') {
-    const scale = pick([10, 100, 100, 1000])
-    const numerator = pick(Array.from({ length: scale - 1 }, (_, index) => index + 1).filter((number) => gcd(number, scale) > 1 && number % 10 !== 0))
-    const divisor = gcd(numerator, scale)
-    const decimal = (numerator / scale).toString()
-    const correct = formatFraction(numerator / divisor, scale / divisor)
-    const wrong = formatFraction(numerator, scale)
-    return makeQuestion(topic, `Write ${decimal} as a fraction in its simplest form.`, [correct, wrong], correct, decimal)
+  if (Math.random() < 0.5) {
+    const wrong = formatFraction(number.improperTop + number.bottom, number.bottom)
+    return makeQuestion(topic, `Which improper fraction is equivalent to ${mixed}?`, [improper, wrong], improper, mixed)
   }
-
-  if (topic === 'Fraction & decimal conversions') {
-    const pairs = [['1/2', '0.5'], ['1/5', '0.2'], ['1/10', '0.1'], ['1/4', '0.25'], ['3/4', '0.75'], ['2/5', '0.4'], ['3/5', '0.6'], ['7/10', '0.7'], ['1/20', '0.05'], ['1/8', '0.125'], ['3/8', '0.375'], ['1/25', '0.04'], ['7/20', '0.35']]
-    const [fraction, decimal] = pick(pairs)
-    const otherDecimals = pairs.map((pair) => pair[1]).filter((item) => item !== decimal)
-    const wrong = pick(otherDecimals)
-    return makeQuestion(topic, `Which decimal is equal to ${fraction}?`, [decimal, wrong], decimal, fraction)
-  }
-
-  if (topic === 'HCF in a fraction') {
-    const factor = pick([3, 4, 5, 6, 8, 9, 10, 12])
-    const basePairs = [[3, 4], [3, 5], [4, 5], [5, 6], [5, 7], [6, 7], [7, 9], [7, 10]]
-    const [a, b] = pick(basePairs)
-    const top = factor * a
-    const bottom = factor * b
-    const wrongFactors = [...new Set([...factorsOf(top), ...factorsOf(bottom)])]
-      .filter((candidate) => candidate !== factor && (top % candidate !== 0 || bottom % candidate !== 0))
-    const wrong = pick(wrongFactors)
-    return makeQuestion(topic, `What is the HCF of ${top} and ${bottom}?`, [String(factor), String(wrong)], String(factor), `${top}/${bottom}`)
-  }
-
-  if (Math.random() < 0.55) {
-    const commonFactor = pick([2, 3, 4, 5])
-    const [topFactor, bottomFactor] = pick(coprimePairs)
-    const numerator = commonFactor * topFactor
-    const denominator = commonFactor * bottomFactor
-    const variable = pick(['a', 'x', 'm'])
-    const remaining = pick(['b', 'y', 'n'])
-    const correct = `${topFactor === 1 ? '' : topFactor}${remaining}/${bottomFactor}`
-    const wrong = `${numerator}${remaining}/${denominator}`
-    return makeQuestion(topic, 'Simplify:', [correct, wrong], correct, `${numerator}${variable}${remaining}/${denominator}${variable}`, { numerator: `${numerator}${variable}${remaining}`, denominator: `${denominator}${variable}` })
-  }
-
-  const variable = pick(['x', 'y', 'a', 'm'])
-  const first = pick([4, 5, 6, 7, 8, 9, 10, 12])
-  const second = pick([2, 3, 4, 5, 6, 7])
-  const add = Math.random() < 0.5
-  const result = add ? first + second : first - second
-  const sign = add ? '+' : '−'
-  const correct = `${result}${variable}`
-  const wrong = `${add ? first - second : first + second}${variable}`
-  return makeQuestion(topic, `Simplify: ${first}${variable} ${sign} ${second}${variable}`, [correct, wrong], correct, `${first}${variable}${sign}${second}${variable}`)
+  const wrong = formatMixedNumber(number.whole + 1, number.top, number.bottom)
+  return makeQuestion(topic, `Which mixed number is equivalent to ${improper}?`, [mixed, wrong], mixed, improper)
 }
 
 function makeQuestion(topic, prompt, answers, correct, signature, mathFraction = null) {
@@ -187,7 +150,7 @@ function App() {
 
   return <main className="game-shell">
     <header className="topbar">
-      <div className="brand"><span aria-hidden="true">↔</span> Fraction, Decimal Tug of War</div>
+      <div className="brand"><span aria-hidden="true">↔</span> Fraction Tug of War</div>
       <div className="round">ROUND {round} <span>· MIXED PRACTICE</span></div>
       <div className="header-actions"><button className="restart" onClick={() => setShowSettings(true)}>⚙ Settings</button><button className="restart" onClick={restart}>↻ New game</button></div>
     </header>
@@ -208,17 +171,35 @@ function App() {
     </> : <section className="winner-card"><div className="trophy" aria-hidden="true">🏆</div><h2>{winner === 'left' ? 'Blue' : 'Orange'} team wins!</h2><p>They reached {pullsToWin} pulls first.</p><button onClick={restart}>Play again</button></section>}
     <footer>Mixed practice · First correct tap wins · First to {pullsToWin} pulls wins</footer>
 
-    {showSettings && <div className="modal-backdrop" role="presentation"><form className="settings-card" onSubmit={saveSettings}><button type="button" className="close" onClick={() => setShowSettings(false)} aria-label="Close settings">×</button><p className="topic">GAME SETTINGS</p><h2>How long should the game last?</h2><label htmlFor="pulls">Pulls needed to win <strong>{pullsToWin}</strong></label><input id="pulls" type="range" min="2" max="10" value={pullsToWin} onChange={(event) => setPullsToWin(Number(event.target.value))} /><div className="range-labels"><span>Quick<br />2 pulls</span><span>Long<br />10 pulls</span></div><p className="settings-note">Changing this starts a fresh mixed-practice game. Every round is generated from all six topics.</p><button className="save-settings" type="submit">Save & start game</button></form></div>}
+    {showSettings && <div className="modal-backdrop" role="presentation"><form className="settings-card" onSubmit={saveSettings}><button type="button" className="close" onClick={() => setShowSettings(false)} aria-label="Close settings">×</button><p className="topic">GAME SETTINGS</p><h2>How long should the game last?</h2><label htmlFor="pulls">Pulls needed to win <strong>{pullsToWin}</strong></label><input id="pulls" type="range" min="2" max="10" value={pullsToWin} onChange={(event) => setPullsToWin(Number(event.target.value))} /><div className="range-labels"><span>Quick<br />2 pulls</span><span>Long<br />10 pulls</span></div><p className="settings-note">Changing this starts a fresh mixed-practice game. Every round is generated from all three topics.</p><button className="save-settings" type="submit">Save & start game</button></form></div>}
   </main>
 }
 
 function AnswerSide({ team, side, question, onChoose, disabled }) {
-  return <div className={`answer-side ${side}-side`}><p>{team} — TOUCH AN ANSWER</p><div className="answers">{question.answers.map((answer) => <button className="answer" key={answer} onClick={() => onChoose(answer)} disabled={disabled}><span>{answer}</span></button>)}</div></div>
+  return <div className={`answer-side ${side}-side`}><p>{team} — TOUCH AN ANSWER</p><div className="answers">{question.answers.map((answer) => <button className="answer" key={answer} onClick={() => onChoose(answer)} disabled={disabled}><span><MathText text={answer} /></span></button>)}</div></div>
 }
 
 function QuestionPrompt({ question }) {
-  if (!question.mathFraction) return question.prompt
-  return <>{question.prompt} <span className="math-fraction" aria-label={`${question.mathFraction.numerator} over ${question.mathFraction.denominator}`}><span>{question.mathFraction.numerator}</span><span>{question.mathFraction.denominator}</span></span></>
+  return <MathText text={question.prompt} />
+}
+
+function MathText({ text }) {
+  const parts = []
+  const fractionPattern = /\b(\d+)\s+(\d+)\/(\d+)\b|\b(\d+)\/(\d+)\b/g
+  let lastIndex = 0
+  let match
+
+  while ((match = fractionPattern.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
+    const whole = match[1]
+    const numerator = whole ? match[2] : match[4]
+    const denominator = whole ? match[3] : match[5]
+    parts.push(<span className="math-expression" key={`${match.index}-${match[0]}`} aria-label={whole ? `${whole} and ${numerator} over ${denominator}` : `${numerator} over ${denominator}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '.12em', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>{whole && <span>{whole}</span>}<span className="math-fraction" style={{ marginLeft: 0 }}><span>{numerator}</span><span>{denominator}</span></span></span>)
+    lastIndex = fractionPattern.lastIndex
+  }
+
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+  return <>{parts}</>
 }
 
 function Rope({ ropePosition, pullsToWin }) {
